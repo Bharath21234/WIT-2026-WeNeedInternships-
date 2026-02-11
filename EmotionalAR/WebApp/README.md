@@ -2,7 +2,7 @@
 
 An immersive Augmented Reality web application that visualizes anonymous emotional messages as glowing 3D crystals in your real-world surroundings.
 
-Built with **Three.js**, **Mapbox GL JS**, and **Vite**.
+Built with **Three.js**, **Mapbox GL JS**, and **Vite**. Backed by **Firebase**.
 
 ## ✨ Features
 
@@ -18,7 +18,7 @@ Built with **Three.js**, **Mapbox GL JS**, and **Vite**.
 - **3D Rendering**: Three.js
 - **Map Data**: Mapbox GL JS (Standard Style)
 - **Build Tool**: Vite
-- **Backend/Data**: Firebase (Firestore)
+- **Backend/Data**: Firebase (Firestore - Optional/Stubbed by default)
 
 ## 🚀 Getting Started
 
@@ -27,7 +27,7 @@ Built with **Three.js**, **Mapbox GL JS**, and **Vite**.
 1.  **Node.js**: Install from [nodejs.org](https://nodejs.org/).
 2.  **Mapbox Access Token**: Get a free token from [Mapbox](https://account.mapbox.com/).
 
-### Installation
+### 1. Web Application Setup
 
 1.  Clone the repository:
     ```bash
@@ -45,9 +45,32 @@ Built with **Three.js**, **Mapbox GL JS**, and **Vite**.
     - Replace `MAPBOX_ACCESS_TOKEN` with your own token.
     - **Important**: Ensure your token has `localhost:3000` (and `localhost:5173` if dev port changes) in its **URL Restrictions**.
 
+4.  (Optional) Configure Firebase:
+    - Open `src/firebase.js`.
+    - Add your Firebase config object to `FIREBASE_CONFIG` to enable real persistence.
+    - Default is **Stub Mode** (data resets on reload).
+
+### 2. Backend Setup (Optional)
+
+If you want to deploy the Cloud Functions for AI moderation:
+
+1.  Navigate to Firebase directory:
+    ```bash
+    cd ../Firebase/functions 
+    # (From project root: cd Firebase/functions)
+    ```
+
+2.  Install dependencies and deploy:
+    ```bash
+    npm install
+    # Set your OpenAI key
+    firebase functions:config:set openai.key="YOUR_KEY"
+    firebase deploy --only functions,firestore:rules
+    ```
+
 ### Running Locally
 
-Start the development server:
+Start the development server (from `WebApp` directory):
 
 ```bash
 npm run dev
