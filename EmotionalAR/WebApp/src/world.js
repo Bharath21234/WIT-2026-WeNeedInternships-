@@ -25,6 +25,7 @@ const _raycaster = new THREE.Raycaster();
  */
 export function initWorld() {
   return new Promise((resolve) => {
+    console.log('[World] Using Mapbox Token:', MAPBOX_ACCESS_TOKEN ? MAPBOX_ACCESS_TOKEN.substring(0, 10) + '...' : 'MISSING');
     mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
     _clock = new THREE.Clock();
 
@@ -66,6 +67,14 @@ export function initWorld() {
       pitchWithRotate: true, // Allow looking up/down
       touchPitch: true,      // Allow looking up/down
       // Config provided in mapStyle
+    });
+
+    _map.on('error', (e) => {
+      console.error('[Mapbox Error]', e);
+      // Only alert critical errors
+      if (e.error && (e.error.status === 401 || e.error.status === 403)) {
+        alert(`Mapbox Error: ${e.error.message}\nStatus: ${e.error.status}\nCheck console for details.`);
+      }
     });
 
     _map.on('style.load', () => {

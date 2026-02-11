@@ -9,6 +9,7 @@ import { initFirebase, fetchNearbyMessages } from './firebase.js';
 import { startGPS, gpsToLocal, getPosition, haversine } from './gps.js';
 import { initUI, showCard, closeCard, hideLoadingScreen, showEmptyState, updateHUD, showToast } from './ui.js';
 import { initCharacter, updateCharacterPosition, setTargetPosition, setCharacterDirection, setWalking, setWalkSpeed, setCharacterLatLng, animateCharacter } from './character.js';
+import { showAuth } from './auth.js';
 
 // ── State ─────────────────────────────────────────────────────
 let lastFetchTime = 0;
@@ -39,8 +40,11 @@ async function boot() {
     initUI(() => { /* node deselect callback */ });
     initCharacter(scene);
 
-    // 3. Init Firebase
-    await initFirebase();
+    // 3. Init Firebase and check Auth
+    const user = await initFirebase();
+    if (!user) {
+        showAuth();
+    }
 
     // 3.5 Relocate button
     const btnRelocate = document.getElementById('btn-relocate');

@@ -40,7 +40,7 @@ export function startGPS(onUpdate) {
                             console.warn('[GPS] Watch error:', err.message);
                         }
                     },
-                    { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+                    { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 }
                 );
 
                 // Periodic status polling (every 10 seconds)
@@ -56,7 +56,7 @@ export function startGPS(onUpdate) {
                 _lastUpdateTime = performance.now();
                 resolve({ lat: _lat, lng: _lng });
             },
-            { enableHighAccuracy: true, timeout: 5000 }
+            { enableHighAccuracy: true, timeout: 30000 }
         );
     });
 }

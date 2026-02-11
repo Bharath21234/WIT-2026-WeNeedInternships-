@@ -409,10 +409,17 @@ body {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: transparent;
+  pointer-events: none;
   transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.overlay.visible {
+  pointer-events: auto;
+}
+
+.overlay>* {
+  pointer-events: auto;
 }
 
 .overlay.hidden {
@@ -490,6 +497,13 @@ body {
   text-align: center;
   padding: 48px 32px;
   max-width: 400px;
+  background: var(--bg-card-solid);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  margin-bottom: 50%;
+  /* Float it a bit higher */
 }
 
 .empty-icon {
@@ -575,5 +589,214 @@ body {
 
   .input-card {
     padding: 20px 16px 28px;
+  }
+}
+
+/* ── New UI Elements ────────────────────────────────────────── */
+
+.hud-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all var(--transition);
+}
+
+.btn-circle:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 32px;
+  background: var(--bg-card-solid);
+  backdrop-filter: blur(40px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  color: white;
+  font-family: var(--font);
+  font-size: 15px;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.input-field:focus {
+  border-color: var(--accent-stress);
+}
+
+.auth-toggle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 16px;
+}
+
+.auth-toggle a {
+  color: var(--accent-hope);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.profile-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-hope);
+}
+
+.btn-ghost-danger {
+  font-size: 13px;
+  color: #EF4444;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-ghost-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.input-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Life Swap Card */
+.life-swap-card {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding-top: 40px;
+}
+
+.swap-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.swap-icon {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.swap-title {
+  font-size: 24px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-hope), var(--accent-comfort));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.swap-user-title {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.swap-user-title span {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.swap-routine {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  overflow-y: auto;
+  margin-bottom: 24px;
+}
+
+.swap-routine ul {
+  list-style-type: none;
+}
+
+.swap-routine li {
+  margin-bottom: 12px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.swap-routine li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--accent-comfort);
+  font-weight: bold;
+}
+
+.swap-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-secondary);
+  font-style: italic;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.routine-list {
+  padding: 0;
+  margin: 0;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.5;
   }
 }

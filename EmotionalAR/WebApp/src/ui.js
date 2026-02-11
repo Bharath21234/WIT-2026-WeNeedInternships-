@@ -1,11 +1,8 @@
-// ═══════════════════════════════════════════════════════════════
-// UI Controller — DOM overlay interactions
-// ═══════════════════════════════════════════════════════════════
-
-import { postMessage, postResponse, fetchResponses, updatePresence, getPresenceCount } from './firebase.js';
+import { postMessage, postResponse, fetchResponses, updatePresence, getPresenceCount, getProfile, saveProfile, logOut, getRandomOtherProfile } from './firebase.js';
 import { getPosition } from './gps.js';
 import { setPresenceDots, syncNodes } from './nodes.js';
-import { checkModeration } from './moderation.js';
+import { checkModeration, extractLifeSummary } from './moderation.js';
+import { initAuth } from './auth.js';
 
 // ── DOM refs ──────────────────────────────────────────────────
 const $ = (s) => document.querySelector(s);
@@ -24,6 +21,35 @@ const BADGE_COLORS = {
 /** Wire up all DOM events. */
 export function initUI(onNodeDeselect) {
     _onNodeDeselect = onNodeDeselect;
+
+    // ── Authentication ──────────────────────────────────────
+    initAuth(() => {
+        // UI already handles hiding the overlay
+        console.log('[UI] Auth successful');
+        loadProfileHeader();
+    });
+
+    // ── Profile ─────────────────────────────────────────────
+    $('#btn-profile').onclick = openProfile;
+    $('#profile-close').onclick = () => $('#profile-overlay').classList.add('hidden');
+    $('#btn-logout').onclick = async () => {
+        await logOut();
+        window.location.reload();
+    };
+    $('#btn-save-profile').onclick = handleSaveProfile;
+
+    // ── Life Swap ───────────────────────────────────────────
+    $('#btn-swap-again').onclick = openLifeSwap;
+    $('#swap-close').onclick = () => $('#life-swap-overlay').classList.add('hidden');
+
+    // Add a swap button to HUD if it doesn't exist (created in index.html)
+    const swapBtn = document.createElement('button');
+    swapBtn.id = 'btn-open-swap';
+    swapBtn.className = 'btn-circle';
+    swapBtn.title = 'Life Swap';
+    swapBtn.innerHTML = '🔄';
+    swapBtn.onclick = openLifeSwap;
+    $('.hud-actions').appendChild(swapBtn);
 
     // ── Card close ──────────────────────────────────────────
     $('#card-close').addEventListener('click', closeCard);
@@ -302,4 +328,73 @@ function timeAgo(date) {
     if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
     return `${days}d ago`;
+}
+
+// ── Profile & Life Swap Helpers ────────────────────────────────
+
+async function openProfile() {
+    $('#profile-overlay').classList.remove('hidden');
+    const profile = await getProfile();
+    if (profile) {
+        $('#profile-name-display').textContent = profile.username || 'Explorer';
+        $('#profile-bio').value = profile.bio || '';
+    }
+}
+
+async function handleSaveProfile() {
+    const bio = $('#profile-bio').value.trim();
+    const btn = $('#btn-save-profile');
+
+    try {
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        await saveProfile({ bio });
+        showToast('Profile saved!', 'success');
+        $('#profile-overlay').classList.add('hidden');
+    } catch (err) {
+        showToast('Save failed', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save Profile';
+    }
+}
+
+async function loadProfileHeader() {
+    const profile = await getProfile();
+    if (profile) {
+        $('#btn-profile').textContent = (profile.username || 'E').charAt(0).toUpperCase();
+    }
+}
+
+async function openLifeSwap() {
+    $('#life-swap-overlay').classList.remove('hidden');
+    const routineList = $('#swap-routine');
+    const userText = $('#swap-username');
+
+    routineList.innerHTML = '<div class="swap-loading">Searching for a life to swap with...</div>';
+    userText.textContent = '...';
+
+    try {
+        const profile = await getRandomOtherProfile();
+
+        if (!profile || !profile.bio) {
+            routineList.innerHTML = '<p>No one has shared their life details yet. Be the first by updating your profile!</p>';
+            userText.textContent = 'No one yet';
+            return;
+        }
+
+        routineList.innerHTML = '<div class="swap-loading">Extracting day in the life...</div>';
+        const summary = await extractLifeSummary(profile.bio);
+
+        userText.textContent = profile.username || 'Anonymous';
+        // Format the summary nicely
+        const lines = summary.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+
+        routineList.innerHTML = `<ul class="routine-list">${lines.map(line => `<li>${line.replace(/^[•\-\*]\s*/, '')}</li>`).join('')}</ul>`;
+    } catch (err) {
+        console.error('[UI] Swap error:', err);
+        routineList.innerHTML = '<p>The swap failed. Try again soon.</p>';
+    }
 }

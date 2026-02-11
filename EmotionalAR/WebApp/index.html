@@ -46,7 +46,10 @@
   <div id="hud">
     <div class="hud-top">
       <span class="hud-logo">EmotionalAR</span>
-      <span id="hud-count" class="hud-badge">0 nearby</span>
+      <div class="hud-actions">
+        <span id="hud-count" class="hud-badge">0 nearby</span>
+        <button id="btn-profile" class="btn-circle" title="My Profile">👤</button>
+      </div>
     </div>
     <button id="btn-new-message" class="fab" title="Share how you're feeling">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -63,6 +66,65 @@
         <line x1="18" y1="12" x2="22" y2="12" />
       </svg>
     </button>
+  </div>
+
+  <!-- Authentication Overlay -->
+  <div id="auth-overlay" class="overlay">
+    <div class="auth-card">
+      <h1 class="loading-title">Welcome to EmotionalAR</h1>
+      <p id="auth-sub" class="loading-sub">Sign up to join the landscape</p>
+
+      <div id="signup-form" class="auth-form">
+        <input type="text" id="signup-username" placeholder="Username" class="input-field" />
+        <input type="email" id="signup-email" placeholder="Email" class="input-field" />
+        <input type="password" id="signup-password" placeholder="Password" class="input-field" />
+        <button id="btn-do-signup" class="btn-primary">Sign Up</button>
+        <p class="auth-toggle">Already have an account? <a href="#" id="link-to-login">Log In</a></p>
+      </div>
+
+      <div id="login-form" class="auth-form hidden">
+        <input type="email" id="login-email" placeholder="Email" class="input-field" />
+        <input type="password" id="login-password" placeholder="Password" class="input-field" />
+        <button id="btn-do-login" class="btn-primary">Log In</button>
+        <p class="auth-toggle">New here? <a href="#" id="link-to-signup">Sign Up</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Overlay -->
+  <div id="profile-overlay" class="overlay hidden">
+    <div class="input-card">
+      <button id="profile-close" class="card-close">&times;</button>
+      <h2 class="input-title">My Profile</h2>
+      <div class="profile-header">
+        <span id="profile-name-display" class="profile-name">Explorer</span>
+        <button id="btn-logout" class="btn-ghost-danger">Logout</button>
+      </div>
+      <p class="input-label">Tell us about your life (for Life Swap)</p>
+      <textarea id="profile-bio" class="input-textarea"
+        placeholder="e.g. My typical day starts at 7am with a coffee, then I commute to the office. I spend my afternoons coding and evenings at the gym..."></textarea>
+      <div class="input-actions" style="margin-top: 1rem;">
+        <button id="btn-save-profile" class="btn-primary">Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Life Swap View -->
+  <div id="life-swap-overlay" class="overlay hidden">
+    <div class="card life-swap-card">
+      <button id="swap-close" class="card-close">&times;</button>
+      <div class="swap-header">
+        <span class="swap-icon">🔄</span>
+        <h2 class="swap-title">Life Swap</h2>
+      </div>
+      <div class="swap-content">
+        <p class="swap-user-title">A Day in the Life of <span id="swap-username">Someone</span></p>
+        <div id="swap-routine" class="swap-routine">
+          <!-- AI generated routine goes here -->
+        </div>
+      </div>
+      <button id="btn-swap-again" class="btn-primary">Swap with Someone Else</button>
+    </div>
   </div>
 
   <!-- Message Card -->
@@ -95,8 +157,8 @@
     </div>
   </div>
 
-  <!-- Empty State -->
-  <div id="empty-state" class="overlay hidden">
+  <!-- Empty State (Hidden per user request) -->
+  <div id="empty-state" class="overlay hidden" style="display: none !important;">
     <div class="empty-card">
       <div class="empty-icon">🌌</div>
       <h2>The emotional landscape is quiet here</h2>

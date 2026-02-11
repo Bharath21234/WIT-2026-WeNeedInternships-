@@ -1,25 +1,29 @@
 // ═══════════════════════════════════════════════════════════════
-// Firebase Client — Web SDK (stub mode for development)
+// Firebase Client — Web SDK
 // ═══════════════════════════════════════════════════════════════
 
 // ── Config ────────────────────────────────────────────────────
-// Replace with your actual Firebase config for production.
-// For development/demo, we run in STUB mode (no real Firebase).
+// TODO: PASTE YOUR FIREBASE CONFIG HERE
+// Get this from: Firebase Console > Project Settings > General > Your Apps > Web App
 const FIREBASE_CONFIG = {
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    storageBucket: '',
-    messagingSenderId: '',
-    appId: '',
+    apiKey: "AIzaSyCtWoI5S9QVlD1uJa9YfkUU2SMRe4JBDa8",
+    authDomain: "emotionalar.firebaseapp.com",
+    projectId: "emotionalar",
+    storageBucket: "emotionalar.firebasestorage.app",
+    messagingSenderId: "850673778327",
+    appId: "1:850673778327:web:2035a24abedacb6c28f3d2",
+    measurementId: "G-9SS3SBDGNM"
 };
 
-const USE_STUBS = !FIREBASE_CONFIG.apiKey; // Auto-detect stub mode
+// Check if config is missing
+if (!FIREBASE_CONFIG.apiKey) {
+    console.error('Firebase Config missing! Please update src/firebase.js');
+    // Note: We don't throw an error here so the app doesn't crash immediately,
+    // but auth/db calls will likely fail or warn.
+}
 
 let _db, _auth, _functions, _userId;
 let _ready = false;
-let _localMessages = [];
-const STORAGE_KEY = 'emotional_ar_local_messages';
 
 // ── Emotion colors ────────────────────────────────────────────
 const EMOTION_COLORS = {
@@ -35,96 +39,166 @@ const EMOTIONS = Object.keys(EMOTION_COLORS);
 // ── Initialization ────────────────────────────────────────────
 
 export async function initFirebase() {
-    if (USE_STUBS) {
-        _userId = 'dev-user-' + Math.floor(Math.random() * 9000 + 1000);
-
-        // Load from local storage
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            try {
-                _localMessages = JSON.parse(saved);
-                console.log(`[Firebase] Loaded ${_localMessages.length} local messages.`);
-            } catch (e) {
-                console.warn('[Firebase] Failed to parse local storage.');
-                _localMessages = [];
-            }
-        }
-
-        _ready = true;
-        console.log('[Firebase] Running in STUB mode — no real backend.');
-        return;
-    }
-
-    // Dynamic import so stub mode doesn't require Firebase SDK
+    // Dynamically import Firebase to save bundle size if not used immediately
     const { initializeApp } = await import('firebase/app');
-    const { getAuth, signInAnonymously } = await import('firebase/auth');
+    const { getAuth, onAuthStateChanged } = await import('firebase/auth');
     const { getFirestore } = await import('firebase/firestore');
-    const { getFunctions } = await import('firebase/functions');
+    // const { getFunctions } = await import('firebase/functions'); // Not using functions for now
 
-    const app = initializeApp(FIREBASE_CONFIG);
-    _auth = getAuth(app);
-    _db = getFirestore(app);
-    _functions = getFunctions(app);
+    try {
+        const app = initializeApp(FIREBASE_CONFIG);
+        _auth = getAuth(app);
+        _db = getFirestore(app);
+        // _functions = getFunctions(app);
 
-    const result = await signInAnonymously(_auth);
-    _userId = result.user.uid;
-    _ready = true;
-    console.log(`[Firebase] Ready. UID: ${_userId}`);
+        return new Promise((resolve) => {
+            onAuthStateChanged(_auth, (user) => {
+                if (user) {
+                    _userId = user.uid;
+                    console.log(`[Firebase] User authenticated: ${_userId}`);
+                } else {
+                    _userId = null;
+                    console.log('[Firebase] No user authenticated.');
+                }
+                _ready = true;
+                resolve(user);
+            });
+        });
+    } catch (e) {
+        console.error("[Firebase] Initialization failed. Check your config in src/firebase.js", e);
+        _ready = false;
+        return null;
+    }
 }
 
 export function isReady() { return _ready; }
 export function getUserId() { return _userId; }
 
+// ── Authentication ────────────────────────────────────────────
+
+export async function signUp(email, password, username) {
+    const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
+    try {
+        const res = await createUserWithEmailAndPassword(_auth, email, password);
+        await updateProfile(res.user, { displayName: username });
+
+        // Try to create initial profile, but don't block auth if it fails (e.g. Firestore not set up)
+        try {
+            await saveProfile({ username, bio: '' }, res.user.uid);
+        } catch (profileErr) {
+            console.warn("[Firebase] Failed to create initial profile (Firestore might be disabled):", profileErr);
+        }
+
+        return res.user;
+    } catch (e) {
+        console.error("[Firebase] SignUp failed:", e);
+        throw e;
+    }
+}
+
+export async function logIn(email, password) {
+    const { signInWithEmailAndPassword } = await import('firebase/auth');
+    try {
+        const res = await signInWithEmailAndPassword(_auth, email, password);
+        return res.user;
+    } catch (e) {
+        console.error("[Firebase] Login failed:", e);
+        throw e;
+    }
+}
+
+export async function logOut() {
+    const { signOut } = await import('firebase/auth');
+    await signOut(_auth);
+}
+
+// ── Profile Management ────────────────────────────────────────
+
+export async function saveProfile(data, uid = _userId) {
+    if (!uid) return;
+    const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+    await setDoc(doc(_db, 'profiles', uid), {
+        ...data,
+        updatedAt: serverTimestamp()
+    }, { merge: true });
+}
+
+export async function getProfile(uid = _userId) {
+    if (!uid) return null;
+    const { doc, getDoc } = await import('firebase/firestore');
+    try {
+        const snap = await getDoc(doc(_db, 'profiles', uid));
+        return snap.exists() ? snap.data() : null;
+    } catch (e) {
+        console.warn("[Firebase] Error fetching profile:", e);
+        return null;
+    }
+}
+
+export async function getRandomOtherProfile() {
+    const { collection, getDocs, query, limit } = await import('firebase/firestore');
+    // Simple random approach: fetch top 20 and pick random one not equal to current user
+    try {
+        const q = query(collection(_db, 'profiles'), limit(20));
+        const snap = await getDocs(q);
+        const others = snap.docs.filter(d => d.id !== _userId);
+
+        if (others.length === 0) return null;
+
+        const randomDoc = others[Math.floor(Math.random() * others.length)];
+        return { uid: randomDoc.id, ...randomDoc.data() };
+    } catch (e) {
+        console.warn("[Firebase] Error fetching random profile:", e);
+        return null;
+    }
+}
+
 // ── Fetch Nearby Messages ─────────────────────────────────────
 
-export async function fetchNearbyMessages(lat, lng, radiusMeters = 20) {
-    if (USE_STUBS) {
-        const demo = generateStubMessages(lat, lng);
-        // Combine demo messages with user's local persistent messages
-        return [..._localMessages, ...demo];
-    }
+export async function fetchNearbyMessages(lat, lng, radiusMeters = 5000) {
+    const { collection, getDocs, query, limit, orderBy } = await import('firebase/firestore');
 
-    const { httpsCallable } = await import('firebase/functions');
-    const fn = httpsCallable(_functions, 'fetchNearbyMessages');
-    const result = await fn({ latitude: lat, longitude: lng, radiusMeters });
-    return result.data.messages || [];
+    // FETCH POLICY:
+    // We are simply fetching the most recent 50 messages globally for this demo.
+    // In a real app with Geo queries, you'd use geohashing or Firestore GeoPoints with specific queries.
+
+    try {
+        const q = query(collection(_db, 'messages'), orderBy('createdAt', 'desc'), limit(50));
+        const snap = await getDocs(q);
+
+        return snap.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                // Ensure date string for UI
+                createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+            };
+        });
+    } catch (e) {
+        console.warn("[Firebase] Error fetching messages:", e);
+        return [];
+    }
 }
 
 // ── Post Message ──────────────────────────────────────────────
 
 export async function postMessage(text, lat, lng, emotion) {
-    if (USE_STUBS) {
-        const id = 'local-' + Date.now();
-        // Use the provided emotion, or fallback to random
-        const selectedEmotion = emotion && EMOTION_COLORS[emotion] ? emotion : EMOTIONS[Math.floor(Math.random() * EMOTIONS.length)];
-        const msg = {
-            id,
-            text,
-            emotion: selectedEmotion,
-            intensity: 0.8,
-            colorHex: EMOTION_COLORS[selectedEmotion],
-            latitude: lat,
-            longitude: lng,
-            responseCount: 0,
-            responses: [],
-            createdAt: new Date().toISOString(),
-            isLocal: true
-        };
+    if (!_auth.currentUser) throw new Error("Must be logged in to post.");
 
-        _localMessages.push(msg);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(_localMessages));
+    const selectedEmotion = emotion && EMOTION_COLORS[emotion] ? emotion : 'hope';
+    const colorHex = EMOTION_COLORS[selectedEmotion];
 
-        console.log(`[Firebase] [STUB] Message saved locally: "${text}" (${selectedEmotion})`);
-        return true;
-    }
-
-    const { httpsCallable } = await import('firebase/functions');
-    // In production, this writes to Firestore which triggers moderateMessage
     const { collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+
     await addDoc(collection(_db, 'messages'), {
         text,
-        latitude: Math.round(lat * 10000) / 10000,
-        longitude: Math.round(lng * 10000) / 10000,
+        emotion: selectedEmotion,
+        colorHex,
+        latitude: Number(lat),
+        longitude: Number(lng),
+        userId: _userId, // Crucial: Link message to user
+        responseCount: 0,
         createdAt: serverTimestamp(),
     });
     return true;
@@ -133,22 +207,20 @@ export async function postMessage(text, lat, lng, emotion) {
 // ── Post Response ────────────────────────────────────────────
 
 export async function postResponse(messageId, text) {
-    if (USE_STUBS) {
-        const msg = _localMessages.find(m => m.id === messageId);
-        if (msg) {
-            msg.responses = msg.responses || [];
-            msg.responses.push({ id: 'r-' + Date.now(), text });
-            msg.responseCount = msg.responses.length;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(_localMessages));
-        }
-        console.log(`[Firebase] [STUB] Response saved to ${messageId}: "${text}"`);
-        return true;
-    }
+    if (!_auth.currentUser) throw new Error("Must be logged in to respond.");
 
-    const { collection, addDoc, serverTimestamp, doc } = await import('firebase/firestore');
+    const { collection, addDoc, serverTimestamp, doc, updateDoc, increment } = await import('firebase/firestore');
+
+    // 1. Add response document
     await addDoc(collection(_db, 'messages', messageId, 'responses'), {
         text,
+        userId: _userId,
         createdAt: serverTimestamp(),
+    });
+
+    // 2. Increment counter on parent message
+    await updateDoc(doc(_db, 'messages', messageId), {
+        responseCount: increment(1)
     });
     return true;
 }
@@ -156,73 +228,39 @@ export async function postResponse(messageId, text) {
 // ── Fetch Responses ──────────────────────────────────────────
 
 export async function fetchResponses(messageId) {
-    if (USE_STUBS) {
-        const msg = _localMessages.find(m => m.id === messageId);
-        if (msg && msg.responses) return msg.responses;
-        return generateStubResponses();
-    }
+    const { collection, getDocs, orderBy, query } = await import('firebase/firestore');
 
-    const { collection, getDocs, orderBy, query, doc } = await import('firebase/firestore');
-    const q = query(
-        collection(_db, 'messages', messageId, 'responses'),
-        orderBy('createdAt')
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, text: d.data().text }));
+    try {
+        const q = query(
+            collection(_db, 'messages', messageId, 'responses'),
+            orderBy('createdAt', 'asc')
+        );
+        const snap = await getDocs(q);
+        return snap.docs.map(d => ({ id: d.id, text: d.data().text }));
+    } catch (e) {
+        console.warn("[Firebase] Error fetching responses:", e);
+        return [];
+    }
 }
 
 // ── Presence ─────────────────────────────────────────────────
 
 export async function updatePresence(messageId) {
-    if (USE_STUBS) return;
-    const { httpsCallable } = await import('firebase/functions');
-    const fn = httpsCallable(_functions, 'updatePresence');
-    await fn({ messageId });
-}
-
-export async function getPresenceCount(messageId) {
-    if (USE_STUBS) return Math.floor(Math.random() * 6);
-    const { collection, getDocs, doc } = await import('firebase/firestore');
-    const snap = await getDocs(collection(_db, 'presence', messageId, 'viewers'));
-    return snap.size;
-}
-
-// ── Stub Data ────────────────────────────────────────────────
-
-function generateStubMessages(lat, lng) {
-    const phrases = [
-        { text: 'Feeling overwhelmed today but trying to stay positive', emotion: 'stress' },
-        { text: 'Grateful for the small moments of kindness', emotion: 'hope' },
-        { text: 'Missing home and the people I love', emotion: 'sadness' },
-        { text: 'Found unexpected comfort in a stranger\'s smile', emotion: 'comfort' },
-        { text: 'Sometimes the silence feels heavier than words', emotion: 'loneliness' },
-        { text: 'Today I chose to be brave even when it was hard', emotion: 'hope' },
-        { text: 'The weight of expectations never seems to lighten', emotion: 'stress' },
-        { text: 'A warm cup of tea can heal more than you think', emotion: 'comfort' },
-    ];
-
-    return phrases.map((p, i) => {
-        const angle = (i / phrases.length) * Math.PI * 2;
-        const dist = 3 + Math.random() * 12;
-        return {
-            id: `stub-${i}`,
-            text: p.text,
-            emotion: p.emotion,
-            intensity: 0.3 + Math.random() * 0.7,
-            colorHex: EMOTION_COLORS[p.emotion],
-            latitude: lat + Math.cos(angle) * dist / 110574,
-            longitude: lng + Math.sin(angle) * dist / (111320 * Math.cos(lat * Math.PI / 180)),
-            responseCount: Math.floor(Math.random() * 8),
-            createdAt: new Date(Date.now() - Math.random() * 86400000 * 3).toISOString(),
-            distanceMeters: dist,
-        };
+    if (!_userId) return;
+    const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+    // We store presence in a subcollection 'viewers'
+    await setDoc(doc(_db, 'messages', messageId, 'viewers', _userId), {
+        activeAt: serverTimestamp()
     });
 }
 
-function generateStubResponses() {
-    return [
-        { id: 'r1', text: 'You\'re not alone in this 💫' },
-        { id: 'r2', text: 'Sending warmth your way' },
-        { id: 'r3', text: 'Stay strong, it gets better' },
-    ];
+export async function getPresenceCount(messageId) {
+    const { collection, getCountFromServer } = await import('firebase/firestore');
+    try {
+        const snap = await getCountFromServer(collection(_db, 'messages', messageId, 'viewers'));
+        return snap.data().count;
+    } catch (e) {
+        console.warn("[Firebase] Error fetching presence:", e);
+        return 0; // Fallback
+    }
 }

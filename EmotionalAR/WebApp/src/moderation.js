@@ -42,3 +42,42 @@ export async function checkModeration(text) {
         return true;
     }
 }
+
+/**
+ * Extracts a structured "Day in the Life" summary from user text.
+ */
+export async function extractLifeSummary(text) {
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!apiKey) return text;
+
+    try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'Convert the following description of a person\'s life into a structured, chronological "Day in the Life" routine. Use bullet points and focus on time or sequence. Be concise.'
+                    },
+                    {
+                        role: 'user',
+                        content: text
+                    }
+                ],
+                temperature: 0.5,
+                max_tokens: 300
+            })
+        });
+
+        const data = await response.json();
+        return data.choices[0].message.content.trim();
+    } catch (err) {
+        console.error('[LifeSummary] error:', err);
+        return text;
+    }
+}
