@@ -6,13 +6,13 @@
 // TODO: PASTE YOUR FIREBASE CONFIG HERE
 // Get this from: Firebase Console > Project Settings > General > Your Apps > Web App
 const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyCtWoI5S9QVlD1uJa9YfkUU2SMRe4JBDa8",
-    authDomain: "emotionalar.firebaseapp.com",
-    projectId: "emotionalar",
-    storageBucket: "emotionalar.firebasestorage.app",
-    messagingSenderId: "850673778327",
-    appId: "1:850673778327:web:2035a24abedacb6c28f3d2",
-    measurementId: "G-9SS3SBDGNM"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Check if config is missing
